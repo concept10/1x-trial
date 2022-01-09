@@ -1,0 +1,55 @@
+on: [push, pull_request]
+name: Install and Test
+jobs:
+  build:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != 'remotion-dev/remotion'
+    name: Build Node ${{ matrix.node_version }} - ffmpeg ${{ matrix.ffmpeg_version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node_version: 14
+            ffmpeg_version: 4.4
+          - os: windows-latest
+            node_version: 14
+            ffmpeg_version: 4.4
+          - os: macos-latest
+            node_version: 14
+            ffmpeg_version: 4.4
+          - os: ubuntu-latest
+            node_version: 12
+            ffmpeg_version: 4.4
+          - os: ubuntu-latest
+            node_version: 17
+            ffmpeg_version: 4.4
+          - os: ubuntu-latest
+            node_version: 14
+            ffmpeg_version: 4.1
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node_version }}
+      - uses: Iamshankhadeep/setup-ffmpeg@v1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ matrix.versionffmpeg_version }}
+
+      - name: Cache .pnpm-store
+        uses: actions/cache@v1
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install pnpm
+        run: curl -f https://get.pnpm.io/v6.16.js | node - add --global pnpm@6
+        shell: bash
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & Test
+        run: |
+          pnpm run build
+          pnpm test
